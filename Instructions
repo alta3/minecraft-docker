@@ -1,4 +1,4 @@
-#1 Objective: Learn about Docker while doing something fun. Turn this into a bash script if you want to!
+#1 Objective: Learn about Docker while doing something fun and recognizable
 
 # INSTALL DOCKER
 # Take a docker tutorial
@@ -11,7 +11,7 @@
 # Souce: http://docs.docker.io/en/latest/installation/ubuntulinux/
 
 #2 Start with Ubuntu Precise 12.04 (LTS) (64-bit)
-#  Therefore, you MUST upgrade the kernel to 3.8
+# Therefore, we MUST upgrade the kernel to 3.8
 sudo apt-get update
 sudo apt-get install linux-image-generic-lts-raring linux-headers-generic-lts-raring
 
@@ -26,9 +26,9 @@ sudo apt-get update
 sudo apt-get install lxc-docker
 
 #5 VERIFY DOCKER works by downloading the ubuntu image and launching a container.
-#  When you run the following command, you will enter a docker "container".
-#  Do a list, change directories, etc. Note that everything has changed. You are
-#  inside a container, removed from the hosting machine just like a VM. 
+# When you run the following command, you will enter a docker "container".
+# Do a list, change directories, etc. Note that everything has changed. You are
+# inside a container, removed from the hosting machine just like a VM. 
 sudo docker run -i -t ubuntu /bin/bash
 
 #6 Type exit to EXIT the container.
@@ -43,7 +43,7 @@ exit
 #    enter and exit the container until muscle memory takes over. 
 # ==================================================================
 
-# ====================== BUSYBOX WEB SERVER ========================
+# =============== COMPILE A SIMPLE WEB SERVER for BUSYBOX ==========
 # Based on http://crosbymichael.com/category/docker.html
 # which I used as a framework, you need to prepare by
 # compiling a file called "server".  Here is why:
@@ -86,7 +86,7 @@ go install
 # =====================================================================
 
 # =================== CREATE DOCKERFILES ==============================
-#19  You will create this docker folder structure (see step 20)
+#19  Create this docker folder structure
 #     ~/dockerfiles    (created in step 20) 
 #        /mapserver    (created in step 20)
 #           Dockerfile (created in step 22)
@@ -97,7 +97,7 @@ go install
 #           Dockerfile (created is step 27)
 
 
-#20 Create directories described in step 19
+#20 Create step 19 directories
 mkdir ~/dockerfiles
 mkdir ~/dockerfiles/mapserver
 mkdir ~/dockerfiles/worker
@@ -109,8 +109,7 @@ mkdir ~/dockerfiles/minecraft
  # | |\/| |  / /\ \  |  ___/ |  ___/ |  __|  |  _  /  
  # | |  | | / ____ \ | |     | |     | |____ | | \ \  
  # |_|  |_|/_/    \_\|_|     |_|     |______||_|  \_\ 
-
-# Mapper is a dumb name, I should have called it "webserver" 
+ 
 #21 Copy the server file (from line 18) into ~/dockerfiles/mapserver
 cp ~/go/bin/server  ~/dockerfiles/mapserver
 
@@ -118,18 +117,27 @@ cp ~/go/bin/server  ~/dockerfiles/mapserver
 cd ~/dockerfiles/mapserver
 
 # Source: http://crosbymichael.com/category/docker.html
+# Info:  Docker containers are NATTED
 
 #23 Copy the following text into a file called "Dockerfile"
+   # Start with the off-the-shelf busybox container from docker themselves
 FROM busybox
-ADD mkdir /www
-ADD echo "Keep on swimming, keep on swimming, keep on swimming swimming swimming" >> /www/index.html
+   # Make a directory for web files
+RUN mkdir /www
+   # Add a file into the above directory to see at least SOMETHING when testing.
+RUN echo "Keep on swimming, keep on swimming, keep on swimming swimming swimming" >> /www/index.html
+   # Copy the web server we compile in steps 10 - 18
 ADD server server
+   # Name a directory to be shared with other containers
 VOLUME ["/www"]
+   # run as a daemon
 USER daemon
+   # This exposes port 8000 to other containers. If you want to access this container on port 8000, that is done
+   # elsewhere, read this:  http://docker.readthedocs.org/en/latest/use/port_redirection/
+   # Docker containers IP and port address are controlled with the - switch. See lines 34 and 35 below for examples   
 EXPOSE 8000
 # https://github.com/crosbymichael/.dotfiles/blob/master/bin/server.go func main explains the following arguments
 ENTRYPOINT ["/server", "-h", "0.0.0.0", "-p", "8000", "-dir", "/www"]
-
 
  #__          __ ____   _____   _  __ ______  _____  
  #\ \        / // __ \ |  __ \ | |/ /|  ____||  __ \ 
@@ -138,7 +146,6 @@ ENTRYPOINT ["/server", "-h", "0.0.0.0", "-p", "8000", "-dir", "/www"]
  #   \  /\  /  | |__| || | \ \ | . \ | |____ | | \ \ 
  #    \/  \/    \____/ |_|  \_\|_|\_\|______||_|  \_\
 
-# "Worker" is a dumb name, I should have called it "mapgenerator" 
 #24 change directory to "WORKER"
 cd ~/dockerfiles/worker
 
@@ -151,6 +158,7 @@ RUN echo "deb http://overviewer.org/debian ./" >> /etc/apt/sources.list
 RUN apt-get update
 RUN apt-get install -y --force-yes minecraft-overviewer wget
 ENV VERSION 1.7.4
+   # A copy of minecraft is installed here so that overviewer can load texture packs. This could have been a shared volume too! 
 RUN wget --no-check-certificate https://s3.amazonaws.com/Minecraft.Download/versions/${VERSION}/${VERSION}.jar -P ~/.minecraft/versions/${VERSION}/
 ENTRYPOINT ["overviewer.py"]
 CMD ["/minecraft/world", "/www"]
@@ -184,32 +192,80 @@ EXPOSE 25565
 CMD java -Xmx1024M -Xms1024M -jar minecraft.jar nogui
 
 
-#28 =================== BUILD the DOCKER IMAGES =======================
-#29 Change directory into the mapper folder that contains Dockerfile
+#28. =================== BUILD the DOCKER IMAGES =======================
+#29. Change directory into the mapper folder that contains Dockerfile
 cd ~/dockerfiles/worker
 
-#30 Build the mapper container, called mc/mapper. The "." means Dockerfile is in this directory
+#30. Build the mapper container, called mc/mapper. The "." means Dockerfile is in this directory
 sudo docker build -t mc/mapper .
 
-#31 Repeat steps 29 and 30 for the worker container
+#31. Repeat steps 29 and 30 for the worker container
 cd ~/dockerfiles/wworker 
 sudo docker build -t mc/worker .
 
-#32 Repeat steps 29 and 30 for the minecraft container
+#32. Repeat steps 29 and 30 for the minecraft container
 cd ~/dockerfiles/minecraft 
 sudo docker build -t mc/minecraft .
 
+# If you BUILD a container multiple times, the old container is kept, but
+# a new container is added onto a heap of parent-containers. You cannot
+# delete the parent containers because the "child" container has a dependency.
+# This has led to an outcry from users for a docker "flatten" command that
+# concatinates all the parent containers.
+
+
 # =================== VIEW YOUR DOCKER IMAGES ==========================
-#33 View your REPOSITORY images: mc/mapper, mc/worker, /mc/minecraft plus images pulled down
-sudo docker images
+#33. View your REPOSITORY images: mc/mapper, mc/worker, /mc/minecraft plus images pulled down
+sudo docker images# 
+
 
 # =================== START YOUR DOCKER CONTAINERS ======================
-#34 Start minecraft. Note the MINECRAFT= is tracking the container ID (I think)
+#34. Start minecraft. 
 MINECRAFT=$(sudo docker run -p 25565:25565 -d -v /minecraft mc/minecraft)
 
-#35 Start your web server that will display the map
+#35. Start your web server that will display the map
 MAPPER=$(sudo docker run -p 8000:8000 -d -v /www mc/mapper)
 
-#36 Start the worker that does the map generation. This example shows off shared volumes
+#36. Start the worker that does the map generation. This example shows off shared volumes
+# If you do not connect the two containers like this, volumes will not be shared
 sudo docker run -volumes-from $MINECRAFT -volumes-from $MAPPER mc/worker
+
+# 37. ========= BUT  I lose my data when the container exits! ===============
+# This is a typical newbe problem (been there) 
+# The "GROUND HOG DAY" syndrome" may be a good thing. You shut
+# the container down and just like the Movie, where Bill Murry starts at  
+# 6:00 am, so does the container start fresh. Everything is lost and 
+# Escaping the GROUND HOG DAY syndrome requires you KNOW SOMETHING 
+# sudo docker start <some container> restarts an old container (No ground hog day)
+# sudo docker run  <some image> will create a new container starting at the image (GROUNDHOG DAY)
+# If you want to start an image based on the stare of a current container,
+# use the COMMIT command
+
+#38. While the mc/minecraft is running, it is OK to run this command
+# Note the container ID
+sudo docker ps -l
+
+#39. Uing the container ID discovered in step 38, do the following
+sudo docker commit <container_id> mc/minecraft 
+
+# 40. List the old, abandoned containers with the ps -a (all) switch.
+sudo docker ps -a
+
+# 41. Purely as FYI, you could start any of these containers and they will start
+# at the state they were shut down
+# CONTAINER ID        IMAGE                 COMMAND                
+# e6beb1e8e93f        mc/worker:latest      overviewer.py /minec   
+# 976753ba5cf3        d7829e6b03c5          overviewer.py /minec   
+# 486502bda25d        mc/mapper:latest      /server -h 0.0.0.0 -   
+# 4862b4d3eebc        mc/minecraft:latest   /bin/sh -c java -Xmx (rightnow)
+# dde0b175aa13        mc/minecraft:latest   /bin/sh -c java -Xmx (old)
+# 4218bb555a52        mc/minecraft:latest   /bin/sh -c java -Xmx (older)
+# You COULD restart any of these containers
+# docker start 4218bb555a52  # restarts 6th container above
+
+ 
+# 42. commit the container you want to keep, use YOUR number, not this example
+sudo docker commit 4862b4d3eebc  minecraft
+
+
 
